@@ -1,5 +1,7 @@
 package com.readstack.library.book;
 
+import com.readstack.library.book.dto.BookCreateUpdateDto;
+import com.readstack.library.book.dto.BookDto;
 import com.readstack.library.common.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,6 +29,8 @@ public class BookControllerTest {
     private BookService service;
     @MockitoBean
     private BookRepository repository;
+    @MockitoBean
+    private BookMapper mapper;
 
     private final Book BOOK_MOCK = Book.builder()
             .id(1L)
@@ -33,15 +38,27 @@ public class BookControllerTest {
             .isbn("9780132350884")
             .publishedYear(2008)
             .build();
+    private final BookDto BOOK_DTO_MOCK = BookDto.builder()
+            .id(BOOK_MOCK.getId())
+            .title(BOOK_MOCK.getTitle())
+            .isbn(BOOK_MOCK.getIsbn())
+            .publishedYear(BOOK_MOCK.getPublishedYear())
+            .build();
+    private final BookCreateUpdateDto BOOK_CREATE_UPDATE_DTO_MOCK = BookCreateUpdateDto.builder()
+            .title(BOOK_MOCK.getTitle())
+            .isbn(BOOK_MOCK.getIsbn())
+            .publishedYear(BOOK_MOCK.getPublishedYear())
+            .build();
 
     @Test
     public void list_ok() throws Exception {
         when(service.list()).thenReturn(List.of(BOOK_MOCK));
+        when(mapper.toDTO(BOOK_MOCK)).thenReturn(BOOK_DTO_MOCK);
 
         mockMvc.perform(get("/library/books"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(BOOK_MOCK.getId()))
-                .andExpect(jsonPath("$[0].title").value(BOOK_MOCK.getTitle()));
+                .andExpect(jsonPath("$[0].id").value(BOOK_DTO_MOCK.getId()))
+                .andExpect(jsonPath("$[0].title").value(BOOK_DTO_MOCK.getTitle()));
     }
 
     @Test
@@ -56,19 +73,22 @@ public class BookControllerTest {
 
     @Test
     public void create_valid() throws Exception {
+        when(mapper.toBook(any(BookCreateUpdateDto.class))).thenReturn(BOOK_MOCK);
         when(service.createBook(any(Book.class))).thenReturn(BOOK_MOCK);
+        when(mapper.toDTO(any(Book.class))).thenReturn(BOOK_DTO_MOCK);
 
         String payload = String.format("{\"title\": \"%s\", \"isbn\": \"%s\", \"publishedYear\": %s}",
-                BOOK_MOCK.getTitle(), BOOK_MOCK.getIsbn(), BOOK_MOCK.getPublishedYear());
+                BOOK_CREATE_UPDATE_DTO_MOCK.getTitle(), BOOK_CREATE_UPDATE_DTO_MOCK.getIsbn(), BOOK_CREATE_UPDATE_DTO_MOCK.getPublishedYear());
 
         mockMvc.perform(
                 post("/library/books")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload)
                 )
+                .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(BOOK_MOCK.getId()))
-                .andExpect(jsonPath("$.title").value(BOOK_MOCK.getTitle()));
+                .andExpect(jsonPath("$.id").value(BOOK_DTO_MOCK.getId()))
+                .andExpect(jsonPath("$.title").value(BOOK_DTO_MOCK.getTitle()));
 
     }
 
@@ -76,6 +96,7 @@ public class BookControllerTest {
     public void search_ok() throws Exception {
         when(repository.findAll(org.mockito.ArgumentMatchers.<Specification<Book>>any()))
                 .thenReturn(List.of(BOOK_MOCK));
+        when(mapper.toDTO(BOOK_MOCK)).thenReturn(BOOK_DTO_MOCK);
 
         mockMvc.perform(get("/library/books/search")
                         .param("title", "Clean")
@@ -83,7 +104,7 @@ public class BookControllerTest {
                         .param("toYear", "2020")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(BOOK_MOCK.getId()))
-                .andExpect(jsonPath("$[0].title").value(BOOK_MOCK.getTitle()));
+                .andExpect(jsonPath("$[0].id").value(BOOK_DTO_MOCK.getId()))
+                .andExpect(jsonPath("$[0].title").value(BOOK_DTO_MOCK.getTitle()));
     }
 }

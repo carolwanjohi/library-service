@@ -1,5 +1,7 @@
 package com.readstack.library.book;
 
+import com.readstack.library.book.dto.BookCreateUpdateDto;
+import com.readstack.library.book.dto.BookDto;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,26 +29,30 @@ import static com.readstack.library.book.BookSpecs.yearLTE;
 public class BookController {
     private BookService service;
     private BookRepository repository;
+    private BookMapper mapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Book create(@RequestBody @Valid Book input) {
-        return service.createBook(input);
+    public BookDto create(@RequestBody @Valid BookCreateUpdateDto input) {
+        Book created = service.createBook(mapper.toBook(input));
+        return mapper.toDTO(created);
     }
 
     @GetMapping
-    public List<Book> list() {
-        return service.list();
+    public List<BookDto> list() {
+        return service.list().stream().map(mapper::toDTO).toList();
     }
 
     @GetMapping("/{id}")
-    public Book get(@PathVariable Long id) {
-        return service.get(id);
+    public BookDto get(@PathVariable Long id) {
+        return mapper.toDTO(service.get(id));
     }
 
     @PutMapping("/{id}")
-    public Book update(@PathVariable Long id, @RequestBody @Valid Book input) {
-        return service.update(id, input);
+    public BookDto update(@PathVariable Long id, @RequestBody @Valid BookCreateUpdateDto input) {
+        Book existing = service.get(id);
+        mapper.updateBookFromDto(input, existing);
+        return mapper.toDTO(service.update(id, existing));
     }
 
     @DeleteMapping("/{id}")
@@ -56,7 +62,7 @@ public class BookController {
     }
 
     @GetMapping("/search")
-    public List<Book> search(@RequestParam(required = false) String title,
+    public List<BookDto> search(@RequestParam(required = false) String title,
                              @RequestParam(required = false) Integer fromYear,
                              @RequestParam(required = false) Integer toYear
     ) {
@@ -64,6 +70,6 @@ public class BookController {
                 .and(titleContains(title))
                 .and(yearGTE(fromYear))
                 .and(yearLTE(toYear));
-        return repository.findAll(specification);
+        return repository.findAll(specification).stream().map(mapper::toDTO).toList();
     }
 }
