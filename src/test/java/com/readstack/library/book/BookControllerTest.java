@@ -56,7 +56,6 @@ public class BookControllerTest {
 
     @Test
     public void create_valid() throws Exception {
-        BOOK_MOCK.setId(10L);
         when(service.createBook(any(Book.class))).thenReturn(BOOK_MOCK);
 
         String payload = String.format("{\"title\": \"%s\", \"isbn\": \"%s\", \"publishedYear\": %s}",
