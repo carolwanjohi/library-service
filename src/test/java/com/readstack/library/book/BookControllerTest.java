@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -85,11 +86,42 @@ public class BookControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload)
                 )
-                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(BOOK_DTO_MOCK.getId()))
                 .andExpect(jsonPath("$.title").value(BOOK_DTO_MOCK.getTitle()));
+    }
 
+    @Test
+    void create_invalid() throws Exception {
+        String payload = String.format("{\"title\": \"%s\", \"isbn\": \"%s\", \"publishedYear\": %s}",
+                "", "123456789012345678901", 1400);
+
+        mockMvc.perform(
+                        post("/library/books")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='title')].message").value("must not be blank"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='isbn')].message").value("size must be between 0 and 20"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='publishedYear')].message").value("must be greater than or equal to 1450"));
+    }
+
+    @Test
+    public void update_invalid() throws Exception {
+        String payload = String.format("{\"title\": \"%s\", \"isbn\": \"%s\", \"publishedYear\": %s}",
+                "", BOOK_CREATE_UPDATE_DTO_MOCK.getIsbn(), BOOK_CREATE_UPDATE_DTO_MOCK.getPublishedYear());
+
+        mockMvc.perform(
+                        put("/library/books/{id}", BOOK_MOCK.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(payload)
+                )
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='title')].message").value("must not be blank"));
     }
 
     @Test
